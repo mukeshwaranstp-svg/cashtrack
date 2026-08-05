@@ -33,11 +33,12 @@ if DATABASE_URL.startswith(("postgresql://", "postgres://")):
         sep = "&" if "?" in DATABASE_URL else "?"
         DATABASE_URL += f"{sep}sslmode=require"
 
-    # Supabase hosts resolve to IPv6 first, but Render's free tier has no IPv6
-    # route ("Network is unreachable"). Pin the first IPv4 address instead.
+    # Supabase's direct host can be IPv6-only, and Render's free tier has no
+    # IPv6 route ("Network is unreachable"). Pin the first IPv4 address of any
+    # Supabase host (direct or pooler) so connections always go over IPv4.
     parsed = urllib.parse.urlparse(DATABASE_URL)
     host = parsed.hostname
-    if host and host.endswith("supabase.co"):
+    if host and host.endswith((".supabase.co", ".supabase.com")):
         try:
             ipv4 = socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0]
             DATABASE_URL = urllib.parse.urlunparse(
