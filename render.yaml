@@ -1,0 +1,14 @@
+# Render blueprint — deploy CashTrack (FastAPI backend + built frontend) to a
+# free web service. After the service is created, fill in DATABASE_URL
+# (your Supabase Postgres connection string) in the dashboard, then redeploy.
+services:
+  - type: web
+    name: cashtrack
+    runtime: python
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install -r cashtrack-backend/requirements.txt
+    startCommand: cd cashtrack-backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false

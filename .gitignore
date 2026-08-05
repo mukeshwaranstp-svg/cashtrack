@@ -1,0 +1,12 @@
+.env
+.env.local
+certs/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+server.log
+server.err.log
+*.db
+node_modules/
+venv/
+.venv/
