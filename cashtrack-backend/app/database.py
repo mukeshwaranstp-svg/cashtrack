@@ -6,6 +6,9 @@ only requires changing DATABASE_URL — no other code changes needed,
 since SQLAlchemy abstracts the dialect.
 """
 import os
+import socket
+import urllib.parse
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
@@ -24,6 +27,24 @@ if DATABASE_URL.startswith(("postgresql://", "postgres://")):
     DATABASE_URL = DATABASE_URL.replace(
         "postgresql://", "postgresql+psycopg2://", 1
     ).replace("postgres://", "postgresql+psycopg2://", 1)
+
+    # Supabase requires TLS on every connection.
+    if "sslmode" not in DATABASE_URL:
+        sep = "&" if "?" in DATABASE_URL else "?"
+        DATABASE_URL += f"{sep}sslmode=require"
+
+    # Supabase hosts resolve to IPv6 first, but Render's free tier has no IPv6
+    # route ("Network is unreachable"). Pin the first IPv4 address instead.
+    parsed = urllib.parse.urlparse(DATABASE_URL)
+    host = parsed.hostname
+    if host and host.endswith("supabase.co"):
+        try:
+            ipv4 = socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0]
+            DATABASE_URL = urllib.parse.urlunparse(
+                parsed._replace(netloc=parsed.netloc.replace(host, ipv4))
+            )
+        except OSError:
+            pass
 
 # check_same_thread=False is only needed for SQLite (FastAPI uses multiple threads).
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
