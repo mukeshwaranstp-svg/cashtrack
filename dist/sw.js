@@ -4,8 +4,10 @@
  * Note: browsers only register service workers on secure origins (HTTPS or
  * localhost), so this is dormant when served over a plain-LAN address.
  * v2 — bumping CACHE name purges the old bugged (Android GPU-corruption)
- * bundle from devices so the fixed build loads clean. */
-const CACHE = "cashtrack-v2";
+ * bundle from devices so the fixed build loads clean.
+ * v3 — GPU fixes shipped; bump forces every device to purge v2 and
+ * refetch the fixed index.html + hashed assets. */
+const CACHE = "cashtrack-v3";
 const APP_SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -36,29 +38,33 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   if (url.pathname.startsWith("/assets/")) {
+    // Cache-first for hashed assets (immutable filenames): instant load from
+    // cache, and any cache miss is fetched + stored.
     event.respondWith(
-      caches
-        .match(event.request)
-        .then((cached) => {
-          if (cached) return cached;
-          return fetch(event.request).then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-            return response;
-          });
-        })
-        .catch(() => caches.match("/")),
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          return response;
+        });
+      }),
     );
     return;
   }
 
+  // Navigation + everything else: network-first. A fresh index.html is what
+  // pulls in the new hashed assets, so never short-circuit with a stale copy
+  // unless the network is actually down.
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        }
         return response;
       })
-      .catch(() => caches.match("/")),
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
   );
 });
