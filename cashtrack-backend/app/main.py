@@ -19,7 +19,7 @@ import os
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -61,6 +61,26 @@ app.include_router(profile_router.router)
 # Built frontend (vite build) lives at <project root>/dist. Override the
 # location with FRONTEND_DIST if the backend and frontend are deployed apart.
 FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST", str(Path(__file__).resolve().parents[2] / "dist")))
+
+
+@app.middleware("http")
+async def frontend_cache_control(request: Request, call_next):
+    """Correct Cache-Control for the static frontend so new deploys propagate.
+
+    /assets/* are content-hashed by vite -> safe to cache forever (immutable).
+    Everything else (index.html, sw.js, manifest.json) must be revalidated on
+    every visit; otherwise Chrome heuristically caches the old index.html,
+    which references old hashed assets, and the service worker never sees the
+    update -> users keep the previous (glitchy) build forever.
+    """
+    response = await call_next(request)
+    if request.url.path.startswith("/assets/"):
+        if not response.headers.get("Cache-Control"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    else:
+        if not response.headers.get("Cache-Control"):
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
 
 
 def _utc_today() -> date:
