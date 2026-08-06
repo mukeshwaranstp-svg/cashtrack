@@ -2,8 +2,10 @@
  * Caches the app shell + hashed build assets so the app loads when the
  * network is flaky. API calls (/api/*) are never cached.
  * Note: browsers only register service workers on secure origins (HTTPS or
- * localhost), so this is dormant when served over a plain-LAN address. */
-const CACHE = "cashtrack-v1";
+ * localhost), so this is dormant when served over a plain-LAN address.
+ * v2 — bumping CACHE name purges the old bugged (Android GPU-corruption)
+ * bundle from devices so the fixed build loads clean. */
+const CACHE = "cashtrack-v2";
 const APP_SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
