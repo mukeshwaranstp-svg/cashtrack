@@ -6,8 +6,10 @@
  * v2 — bumping CACHE name purges the old bugged (Android GPU-corruption)
  * bundle from devices so the fixed build loads clean.
  * v3 — GPU fixes shipped; bump forces every device to purge v2 and
- * refetch the fixed index.html + hashed assets. */
-const CACHE = "cashtrack-v3";
+ * refetch the fixed index.html + hashed assets.
+ * v4 — Dashboard hero-blob gradient fix; byte-bump forces reinstall on
+ * devices that had already upgraded to v3, purging the pre-fix bundle. */
+const CACHE = "cashtrack-v4";
 const APP_SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
